@@ -123,9 +123,7 @@ Provide concise, structured, and beginner-friendly guidance. Focus on industry-r
 
 ---
 
-# 📸 Screenshots
 
-> Add your screenshots inside an **assets/** or **screenshots/** folder and replace the image paths below.
 
 ## Home Page
 

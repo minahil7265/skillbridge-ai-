@@ -99,9 +99,6 @@ Provide concise, structured, and beginner-friendly guidance. Focus on industry-r
 * Framer Motion
 * Lucide Icons
 
-## AI
-
-* OpenAI API *(or replace with the AI provider you actually integrated)*
 
 ## Backend
 

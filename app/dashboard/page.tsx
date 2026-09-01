@@ -20,17 +20,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { RoadmapResult } from '@/types';
+import { useAuth } from '@/components/auth-provider';
+import { fetchUserRoadmaps, deleteRoadmapFromSupabase } from '@/lib/roadmap-service';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [roadmaps, setRoadmaps] = useState<RoadmapResult[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('skillbridge_roadmaps');
-    if (stored) setRoadmaps(JSON.parse(stored));
-    setLoading(false);
-  }, []);
+    if (authLoading) return;
+
+    async function load() {
+      if (user) {
+        const { data, error } = await fetchUserRoadmaps();
+        if (error) {
+          toast.error('Failed to load roadmaps');
+          const stored = localStorage.getItem('skillbridge_roadmaps');
+          if (stored) setRoadmaps(JSON.parse(stored));
+        } else {
+          setRoadmaps(data || []);
+        }
+      } else {
+        const stored = localStorage.getItem('skillbridge_roadmaps');
+        if (stored) setRoadmaps(JSON.parse(stored));
+      }
+      setLoading(false);
+    }
+    load();
+  }, [user, authLoading]);
 
   const handleView = (id: string) => {
     const roadmap = roadmaps.find((r) => r.id === id);
@@ -41,8 +60,16 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const updated = roadmaps.filter((r) => r.id !== id);
-    localStorage.setItem('skillbridge_roadmaps', JSON.stringify(updated));
+    if (user) {
+      const { error } = await deleteRoadmapFromSupabase(id);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    } else {
+      const updated = roadmaps.filter((r) => r.id !== id);
+      localStorage.setItem('skillbridge_roadmaps', JSON.stringify(updated));
+    }
     setRoadmaps((prev) => prev.filter((r) => r.id !== id));
     toast.success('Roadmap deleted');
   };
@@ -74,7 +101,9 @@ export default function DashboardPage() {
             </Badge>
             <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Your Roadmaps</h1>
             <p className="mt-2 text-muted-foreground">
-              View, revisit, and manage your saved career roadmaps.
+              {user
+                ? `Signed in as ${user.email} — your roadmaps are saved to your account.`
+                : 'View, revisit, and manage your saved career roadmaps. Sign in to sync across devices.'}
             </p>
           </div>
           <Link href="/profile">

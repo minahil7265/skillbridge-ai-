@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import type { RoadmapResult } from '@/types';
+import { useAuth } from '@/components/auth-provider';
+import { saveRoadmapToSupabase } from '@/lib/roadmap-service';
 import { generateRoadmapPDF } from '@/lib/pdf-generator';
 import { RoadmapTab } from '@/components/roadmap/roadmap-tab';
 import { SkillGapTab } from '@/components/roadmap/skill-gap-tab';
@@ -19,6 +21,7 @@ import { PrepTab } from '@/components/roadmap/prep-tab';
 
 export default function RoadmapPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [result, setResult] = useState<RoadmapResult | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,18 +48,19 @@ export default function RoadmapPage() {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!result) return;
-    const stored = localStorage.getItem('skillbridge_roadmaps');
-    const roadmaps: RoadmapResult[] = stored ? JSON.parse(stored) : [];
-    const existingIndex = roadmaps.findIndex((r) => r.id === result.id);
-    if (existingIndex >= 0) {
-      roadmaps[existingIndex] = result;
-    } else {
-      roadmaps.push(result);
+    if (!user) {
+      toast.info('Sign in to save roadmaps to your account');
+      router.push('/auth');
+      return;
     }
-    localStorage.setItem('skillbridge_roadmaps', JSON.stringify(roadmaps));
-    toast.success('Roadmap saved');
+    const { error } = await saveRoadmapToSupabase(result);
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success('Roadmap saved to your account');
+    }
   };
 
   const handleShare = async () => {
@@ -143,7 +147,7 @@ export default function RoadmapPage() {
             className="gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white"
           >
             <Save className="h-4 w-4" />
-            Save Roadmap
+            {user ? 'Save to Account' : 'Save to Account'}
           </Button>
         </div>
 

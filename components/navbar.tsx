@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Sparkles, Compass, LogOut, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { useAuth } from '@/components/auth-provider';
 
 const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
@@ -16,6 +18,13 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -44,18 +53,35 @@ export function Navbar() {
 
           <div className="hidden items-center gap-2 md:flex">
             <ThemeToggle />
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-1.5">
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </Button>
-            </Link>
-            <Link href="/profile">
-              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50">
-                <Sparkles className="h-4 w-4" />
-                Generate Roadmap
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1.5">
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth">
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    <UserIcon className="h-4 w-4" />
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/profile">
+                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50">
+                    <Sparkles className="h-4 w-4" />
+                    Generate Roadmap
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
@@ -86,18 +112,35 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <Link href="/dashboard" onClick={() => setOpen(false)}>
-                <Button variant="ghost" className="mt-2 w-full justify-start gap-1.5">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/profile" onClick={() => setOpen(false)}>
-                <Button className="mt-1 w-full gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
-                  <Sparkles className="h-4 w-4" />
-                  Generate Roadmap
-                </Button>
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard" onClick={() => setOpen(false)}>
+                    <Button variant="ghost" className="mt-2 w-full justify-start gap-1.5">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" onClick={() => { setOpen(false); handleSignOut(); }} className="w-full justify-start gap-1.5">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth" onClick={() => setOpen(false)}>
+                    <Button variant="ghost" className="mt-2 w-full justify-start gap-1.5">
+                      <UserIcon className="h-4 w-4" />
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/profile" onClick={() => setOpen(false)}>
+                    <Button className="mt-1 w-full gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
+                      <Sparkles className="h-4 w-4" />
+                      Generate Roadmap
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}

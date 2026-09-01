@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, CheckCircle2, Loader2, Sparkles, User, TrendingUp } from 'lucide-react';
-import { generateRoadmap } from '@/lib/roadmap-engine';
+import { motion } from 'framer-motion';
+import { BrainCircuit, CheckCircle2, Loader2, Sparkles, User, TrendingUp, AlertCircle } from 'lucide-react';
+import { saveRoadmapToSupabase } from '@/lib/roadmap-service';
+import { useAuth } from '@/components/auth-provider';
 import type { UserProfile, RoadmapResult } from '@/types';
 
 const STEPS = [
@@ -16,21 +17,13 @@ const STEPS = [
 
 export default function AnalyzingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('skillbridge_profile');
-    if (!stored) {
-      router.push('/profile');
-      return;
-    }
-
-    const profile: UserProfile = JSON.parse(stored);
-    const result = generateRoadmap(profile);
-    result.id = `roadmap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    result.createdAt = Date.now();
-
+  const generate = async (profile: UserProfile) => {
     const stepDuration = 900;
     let step = 0;
     const stepInterval = setInterval(() => {
@@ -45,30 +38,111 @@ export default function AnalyzingPage() {
 
     const progressInterval = setInterval(() => {
       setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
+        if (p >= 95) return p;
         return p + 1.5;
       });
     }, 35);
 
-    const done = setTimeout(() => {
+    try {
+      const response = await fetch('/api/roadmap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate roadmap');
+      }
+
+      const data = await response.json();
+      const result: RoadmapResult = data.roadmap;
+
+      clearInterval(progressInterval);
+      setProgress(100);
+
       localStorage.setItem('skillbridge_current_roadmap', JSON.stringify(result));
 
-      const local = JSON.parse(localStorage.getItem('skillbridge_roadmaps') || '[]');
-      local.unshift(result);
-      localStorage.setItem('skillbridge_roadmaps', JSON.stringify(local));
+      if (user) {
+        const { error: saveError } = await saveRoadmapToSupabase(result);
+        if (saveError) {
+          const local = JSON.parse(localStorage.getItem('skillbridge_roadmaps') || '[]');
+          local.unshift(result);
+          localStorage.setItem('skillbridge_roadmaps', JSON.stringify(local));
+        }
+      } else {
+        const local = JSON.parse(localStorage.getItem('skillbridge_roadmaps') || '[]');
+        local.unshift(result);
+        localStorage.setItem('skillbridge_roadmaps', JSON.stringify(local));
+      }
 
-      router.push('/roadmap');
-    }, STEPS.length * stepDuration + 600);
+      setTimeout(() => router.push('/roadmap'), 400);
+    } catch (err) {
+      clearInterval(progressInterval);
+      clearInterval(stepInterval);
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    }
+  };
+
+  useEffect(() => {
+    if (retrying) return;
+
+    const stored = localStorage.getItem('skillbridge_profile');
+    if (!stored) {
+      router.push('/profile');
+      return;
+    }
+
+    try {
+      const profile: UserProfile = JSON.parse(stored);
+      generate(profile);
+    } catch {
+      router.push('/profile');
+    }
 
     return () => {
-      clearInterval(stepInterval);
-      clearInterval(progressInterval);
-      clearTimeout(done);
+      setRetrying(false);
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, user, retrying]);
+
+  const handleRetry = () => {
+    setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+    setRetrying(true);
+  };
+
+  if (error) {
+    return (
+      <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4">
+        <div className="absolute inset-0 grid-pattern opacity-20 dark:opacity-10" />
+        <div className="absolute left-1/2 top-1/2 -z-10 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/10 blur-3xl" />
+
+        <div className="relative w-full max-w-md text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Generation Failed</h1>
+          <p className="mt-2 text-muted-foreground">{error}</p>
+          <div className="mt-8 flex justify-center gap-3">
+            <button
+              onClick={handleRetry}
+              className="rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:shadow-blue-500/50"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => router.push('/profile')}
+              className="rounded-full border border-slate-300 px-6 py-2.5 text-sm font-semibold transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Edit Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden">

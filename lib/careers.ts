@@ -225,11 +225,4 @@ export const CAREER_TRACKS: CareerTrack[] = [
   },
 ];
 
-export const CAREER_GOAL_OPTIONS = CAREER_TRACKS.map((t) => t.title);
 
-export function getCareerTrack(goal: string): CareerTrack {
-  const found = CAREER_TRACKS.find(
-    (t) => t.title.toLowerCase() === goal.toLowerCase() || t.id === goal.toLowerCase(),
-  );
-  return found ?? CAREER_TRACKS[0];
-}

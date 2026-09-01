@@ -34,7 +34,14 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { CAREER_TRACKS, CAREER_GOAL_OPTIONS } from '@/lib/careers';
+import {
+  EDUCATION_OPTIONS as CFG_EDUCATION,
+  EXPERIENCE_LEVELS as CFG_EXPERIENCE,
+  LEARNING_STYLES as CFG_LEARNING,
+  LANGUAGES as CFG_LANGUAGES,
+  SUGGESTED_SKILLS as CFG_SKILLS,
+  CAREER_GOAL_SUGGESTIONS,
+} from '@/lib/config';
 import type { UserProfile, ExperienceLevel, LearningStyle } from '@/types';
 
 const STEPS = [
@@ -44,38 +51,11 @@ const STEPS = [
   { id: 3, title: 'Preferences', icon: Clock },
 ];
 
-const EDUCATION_OPTIONS = [
-  'High School',
-  'Self-Taught',
-  'Bootcamp Graduate',
-  'Undergraduate Student',
-  "Bachelor's Degree",
-  "Master's Degree",
-  'PhD',
-  'Career Changer',
-];
-
-const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; desc: string }[] = [
-  { value: 'beginner', label: 'Beginner', desc: 'New to tech' },
-  { value: 'intermediate', label: 'Intermediate', desc: 'Some projects done' },
-  { value: 'advanced', label: 'Advanced', desc: 'Comfortable building' },
-  { value: 'professional', label: 'Professional', desc: 'Working in tech' },
-];
-
-const LEARNING_STYLES: { value: LearningStyle; label: string; desc: string }[] = [
-  { value: 'visual', label: 'Visual', desc: 'Videos & diagrams' },
-  { value: 'reading', label: 'Reading', desc: 'Docs & articles' },
-  { value: 'hands-on', label: 'Hands-on', desc: 'Build & experiment' },
-  { value: 'mixed', label: 'Mixed', desc: 'A bit of everything' },
-];
-
-const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Hindi', 'Arabic', 'Mandarin'];
-
-const SUGGESTED_SKILLS = [
-  'Python', 'JavaScript', 'TypeScript', 'React', 'Node.js', 'SQL', 'Java', 'C++',
-  'Git', 'Docker', 'AWS', 'Linux', 'HTML/CSS', 'Flask', 'PostgreSQL', 'MongoDB',
-  'Pandas', 'NumPy', 'PyTorch', 'TensorFlow', 'Kubernetes', 'REST APIs',
-];
+const EDUCATION_OPTIONS = CFG_EDUCATION;
+const EXPERIENCE_LEVELS = CFG_EXPERIENCE as readonly { value: ExperienceLevel; label: string; desc: string }[];
+const LEARNING_STYLES = CFG_LEARNING as readonly { value: LearningStyle; label: string; desc: string }[];
+const LANGUAGES = CFG_LANGUAGES;
+const SUGGESTED_SKILLS = CFG_SKILLS;
 
 const fadeVariants = {
   enter: { opacity: 0, x: 20 },
@@ -336,44 +316,31 @@ export default function ProfilePage() {
                       <Label htmlFor="goal" className="flex items-center gap-1.5">
                         <Target className="h-4 w-4" /> Career Goal <span className="text-destructive">*</span>
                       </Label>
-                      <Select value={profile.careerGoal} onValueChange={(v) => setProfile({ ...profile, careerGoal: v })}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="Select your target career" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CAREER_GOAL_OPTIONS.map((goal) => (
-                            <SelectItem key={goal} value={goal}>{goal}</SelectItem>
+                      <Input
+                        id="goal"
+                        placeholder="e.g. Backend Engineer, Data Scientist, DevOps Engineer"
+                        value={profile.careerGoal}
+                        onChange={(e) => setProfile({ ...profile, careerGoal: e.target.value })}
+                        className="h-12"
+                      />
+                      <div className="mt-3">
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">Quick pick:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {CAREER_GOAL_SUGGESTIONS.filter(
+                            (s) => s.toLowerCase() !== profile.careerGoal.toLowerCase(),
+                          ).slice(0, 8).map((goal) => (
+                            <button
+                              key={goal}
+                              type="button"
+                              onClick={() => setProfile({ ...profile, careerGoal: goal })}
+                              className="rounded-full border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs font-medium transition-colors hover:border-blue-500 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                              {goal}
+                            </button>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </div>
+                      </div>
                     </div>
-
-                    {profile.careerGoal && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4"
-                      >
-                        {(() => {
-                          const track = CAREER_TRACKS.find((t) => t.title === profile.careerGoal);
-                          if (!track) return null;
-                          return (
-                            <div>
-                              <p className="text-sm font-semibold">{track.title}</p>
-                              <p className="mt-1 text-sm text-muted-foreground">{track.description}</p>
-                              <div className="mt-3 flex flex-wrap gap-1.5">
-                                {track.requiredSkills.slice(0, 6).map((s) => (
-                                  <Badge key={s.skill} variant="outline" className="text-xs">
-                                    {s.skill}
-                                  </Badge>
-                                ))}
-                                <span className="text-xs text-muted-foreground">+{track.requiredSkills.length - 6} more</span>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                    )}
                   </div>
                 )}
 
